@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
-import { FaInstagram, FaYoutube, FaGoogle } from "react-icons/fa";
+import { FaFacebook, FaYoutube, FaGoogle } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import branfluWholeLogo from "@/assest/branfluWholeLogo.png";
@@ -18,8 +18,11 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleFacebookLogin = () => {
+    window.location.href = "http://localhost:8080/api/facebook/login";
+  };
+
   const handleYouTubeLogin = () => {
-    // 👇 Redirects browser to backend which redirects to Google Auth
     window.location.href = "http://localhost:8080/api/youtube/auth";
   };
 
@@ -102,8 +105,11 @@ export default function LoginPage() {
           <div className="min-h-[360px]">
             {activeTab === "influencer" ? (
               <div className="space-y-4 pt-2">
-                <Button className="w-full bg-gradient-to-r from-pink-500 to-orange-400 text-white font-semibold text-lg py-3 flex items-center justify-center gap-2 rounded-xl hover:opacity-90 transition-all duration-300">
-                  <FaInstagram size={20} /> Continue with Instagram
+                <Button
+                  onClick={handleFacebookLogin}
+                  className="w-full bg-blue-700 text-white font-semibold text-lg py-3 flex items-center justify-center gap-2 rounded-xl hover:bg-blue-800 transition-all duration-300"
+                >
+                  <FaFacebook size={20} /> Continue with Facebook
                 </Button>
                 <Button
                   onClick={handleYouTubeLogin}
