@@ -40,11 +40,49 @@ export default function LoginPage() {
 
   const handleYouTubeLogin = () => {
     redirectTo("http://localhost:8080/api/youtube/auth");
+   
   };
+
+  const handleLogin = async () => {
+  const payload = {
+    payPalEmail: email,
+    password: password,
+  };
+
+  const endpoint = "https://native-violently-imp.ngrok-free.app/api/login";
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Save token to localStorage or cookies if needed
+      localStorage.setItem("token", data.token);
+  
+
+      // ✅ Redirect on successful login
+      window.location.href = "/login-redirecting";
+    } else {
+      console.log("Login API response:", data);
+
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    alert("Something went wrong during login.");
+  }
+};
+
 
   const handleRegister = async () => {
   const payload = {
-    name: fullName,
+  name: fullName,
   payPalEmail: email,          // ✅ Corrected key
   password: password,
   role: "BUSINESS",            // ✅ Required field
@@ -69,7 +107,7 @@ export default function LoginPage() {
 
     if (response.ok) {
       // ✅ Redirect to login-success page
-      window.location.href = "/login-success";
+      window.location.href = "/login-redirecting";
     } else {
       alert(`Registration failed: ${data.message || "Unknown error"}`);
     }
@@ -176,10 +214,9 @@ export default function LoginPage() {
               </div>
             ) : (
               <div className="space-y-4 pt-2">
-                <input type="email" placeholder="you@company.com" className="w-full px-4 py-3 rounded-md bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input type="password" placeholder="Password" className="w-full px-4 py-3 rounded-md bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <Button className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 font-semibold transition-all duration-300">Login</Button>
-
+                <input type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-md bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}className="w-full px-4 py-3 rounded-md bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <Button onClick={handleLogin} className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 font-semibold transition-all duration-300">Login</Button>
                 <div className="relative w-full text-center my-4">
                   <hr className="border-t border-gray-600" />
                   <span className="absolute inset-0 flex items-center justify-center text-gray-400 bg-[#1e293b] px-2 text-sm">or</span>
