@@ -9,6 +9,8 @@ import {
 } from "react-icons/io5";
 import { FaRegUserCircle, FaYoutube, FaInstagram } from "react-icons/fa";
 import branfluLogo from "@/assest/branfluLogo.png";
+import { useRouter } from "next/navigation"
+
 import {
   LineChart,
   Line,
@@ -20,6 +22,9 @@ import {
   CartesianGrid,
 } from "recharts";
 
+
+
+
 interface Influencer {
   title: string;
   imageUrl?: string;
@@ -30,7 +35,7 @@ interface Influencer {
 }
 
 interface ChartDataPoint {
-  date: string;
+  date: string; // formatted for display, e.g. "May 15"
   views: number;
   likes: number;
   comments: number;
@@ -47,7 +52,20 @@ function parseJwt(token: string | null): any {
   }
 }
 
+function formatDateForXAxis(isoDate: string): string {
+  // isoDate assumed "YYYY-MM-DD" or a valid ISO string
+  try {
+    const d = new Date(isoDate);
+    return d.toLocaleString("en-US", { month: "short", day: "numeric" }); // e.g. "May 15"
+  } catch {
+    return isoDate;
+  }
+}
+
 const CampaignsPage: React.FC = () => {
+  const router = useRouter();
+  // ✅ Pages Router hook
+
   const [influencer, setInfluencer] = useState<Influencer | null>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -80,6 +98,7 @@ const CampaignsPage: React.FC = () => {
       return;
     }
 
+    // Fetch influencer data from your backend endpoint
     fetch(`http://localhost:8080/api/youtube/influencer/${channelId}`, {
       method: "GET",
       headers: {
@@ -92,26 +111,59 @@ const CampaignsPage: React.FC = () => {
         return res.json();
       })
       .then((data) => {
-        const p = data.profile;
+        // Map root-level fields to influencer state (matches the API you provided)
         setInfluencer({
-          title: p.title,
-          imageUrl: p.imageUrl,
-          subscriberCount: p.subscribers ?? 0,
-          totalViews: p.views ?? 0,
-          totalVideos: p.videos ?? 0,
-          engagementRate: p.engagementRate ?? 0,
+          title: data.name ?? "Unknown",
+          imageUrl: data.imageUrl ?? undefined,
+          subscriberCount: data.subscriberCount ?? data.subscribers ?? 0,
+          totalViews: data.totalViews ?? data.views ?? 0,
+          totalVideos: data.videoCount ?? data.videos ?? 0,
+          engagementRate: data.engagementRate ?? 0,
         });
 
-        if (data.analytics?.rows && data.analytics.rows.length > 0) {
-          const formatted = data.analytics.rows.map((r: any[]) => ({
-            date: r[0],
-            views: r[1],
-            likes: r[3],
-            comments: r[4],
+        // Map analytics array -> chart data
+        if (Array.isArray(data.analytics) && data.analytics.length > 0) {
+          // Some backends may wrap analytics differently; you said analytics is an array of objects.
+          // If the API returns an object with { analytics: [...] } this will work.
+          const arr = data.analytics.slice(); // shallow copy
+          // ensure each element is an object {date, views, likes, comments}
+          const sorted = arr.sort((a: any, b: any) => {
+            const da = new Date(a.date).getTime();
+            const db = new Date(b.date).getTime();
+            return da - db;
+          });
+
+          const formatted: ChartDataPoint[] = sorted.map((r: any) => ({
+            date: formatDateForXAxis(r.date ?? r.daily ?? ""),
+            views: typeof r.views === "number" ? r.views : 0,
+            likes: typeof r.likes === "number" ? r.likes : 0,
+            comments: typeof r.comments === "number" ? r.comments : 0,
           }));
+
           setChartData(formatted);
         } else {
-          setChartData([]);
+          // If the API uses a different analytics shape (e.g. data.analytics.rows),
+          // try to fallback to that format as well:
+          if (data.analytics?.rows && Array.isArray(data.analytics.rows)) {
+            const rows = data.analytics.rows
+              .map((r: any[]) => ({
+                // assume row format [date, views, ???, likes, comments]
+                date: r[0],
+                views: typeof r[1] === "number" ? r[1] : 0,
+                likes: typeof r[3] === "number" ? r[3] : 0,
+                comments: typeof r[4] === "number" ? r[4] : 0,
+              }))
+              .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+              .map((r: any) => ({
+                date: formatDateForXAxis(r.date),
+                views: r.views,
+                likes: r.likes,
+                comments: r.comments,
+              }));
+            setChartData(rows);
+          } else {
+            setChartData([]);
+          }
         }
 
         setLoading(false);
@@ -134,9 +186,7 @@ const CampaignsPage: React.FC = () => {
   else if (successRate >= 60) badge = "Silver";
 
   // Sidebar click handler
-  const handleMenuClick = (menu: string) => {
-    alert(`Clicked ${menu} - Implement navigation!`);
-  };
+
 
   return (
     <div className="flex min-h-screen bg-[#0f172a] text-white">
@@ -153,35 +203,35 @@ const CampaignsPage: React.FC = () => {
         {/* Menu */}
         <nav className="flex flex-col gap-6">
           <div
-            onClick={() => handleMenuClick("Dashboard")}
+            onClick={() => router.push("/influencer/dashboard")}
             className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
           >
             <Icon icon="mdi:view-dashboard-outline" width="20" height="20" />
             Dashboard
           </div>
           <div
-            onClick={() => handleMenuClick("Active Collaboration")}
             className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
+             onClick={() => router.push("/influencer/activeCollabration")}
           >
             <Icon icon="mdi:circle" width="12" height="12" className="text-green-400" />
             Active Collaboration
           </div>
           <div
-            onClick={() => handleMenuClick("Marketplace")}
+
             className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
           >
             <Icon icon="mdi:chart-line" width="20" height="20" />
             Marketplace
           </div>
           <div
-            onClick={() => handleMenuClick("Earnings")}
+
             className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
           >
             <Icon icon="mdi:cash-multiple" width="20" height="20" />
             Earnings
           </div>
           <div
-            onClick={() => handleMenuClick("My Campaigns")}
+
             className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
           >
             <Icon icon="mdi:clipboard-text-outline" width="20" height="20" />
@@ -297,8 +347,14 @@ const CampaignsPage: React.FC = () => {
               ) : influencer ? (
                 <>
                   {influencer.imageUrl ? (
-                    // Using normal img because next/image can't load external URLs without config
-                    <Image src={influencer.imageUrl} alt={`${influencer.title} profile`} width={80} height={80} className="rounded-full border-2 border-gray-600 object-cover" />
+                    // Use native img to avoid next/image external config issues
+                    <img
+                      src={influencer.imageUrl}
+                      alt={`${influencer.title} profile`}
+                      width={80}
+                      height={80}
+                      className="rounded-full border-2 border-gray-600 object-cover"
+                    />
                   ) : (
                     <Icon icon="mdi:account-circle-outline" className="text-7xl text-gray-300" />
                   )}
@@ -323,13 +379,58 @@ const CampaignsPage: React.FC = () => {
                     <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
                     <YAxis stroke="#9ca3af" fontSize={12} />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#111827",
-                        border: "1px solid #374151",
-                        borderRadius: "6px",
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          // Force order: views -> likes -> comments
+                          const order: Record<"views" | "likes" | "comments", number> = {
+                            views: 1,
+                            likes: 2,
+                            comments: 3,
+                          };
+
+                          const ordered = [...payload].sort((a, b) => {
+                            const keyA = a.dataKey as keyof typeof order;
+                            const keyB = b.dataKey as keyof typeof order;
+                            return order[keyA] - order[keyB];
+                          });
+
+                          return (
+                            <div
+                              style={{
+                                backgroundColor: "#111827", // Dark tooltip background
+                                border: "1px solid #374151", // Subtle border
+                                borderRadius: "6px",
+                                padding: "10px",
+                                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                                minWidth: "140px",
+                              }}
+                            >
+                              {/* Date */}
+                              <p style={{ color: "#9ca3af", fontSize: "12px", marginBottom: "4px" }}>
+                                {label}
+                              </p>
+
+                              {/* Data items */}
+                              {ordered.map((entry, index) => (
+                                <p
+                                  key={`item-${index}`}
+                                  style={{
+                                    color: entry.stroke, // Same color for name & value
+                                    fontSize: "13px",
+                                    margin: "2px 0",
+                                    fontWeight: "500",
+                                  }}
+                                >
+                                  {entry.name} : {entry.value.toLocaleString()}
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
                       }}
-                      labelStyle={{ color: "#fff" }}
                     />
+
                     <Legend wrapperStyle={{ color: "#9ca3af" }} />
                     <Line type="monotone" dataKey="views" stroke="#4c6ef5" dot={false} />
                     <Line type="monotone" dataKey="likes" stroke="#15aabf" dot={false} />
@@ -339,25 +440,6 @@ const CampaignsPage: React.FC = () => {
               ) : (
                 <p className="text-gray-500 italic text-center mt-20">No performance data available.</p>
               )}
-            </div>
-
-            {/* Stats */}
-            <div className="space-y-3 border-t border-gray-700 pt-4 mt-auto">
-              <p className="flex justify-between text-sm">
-                <span className="text-gray-300">Campaigns Performed</span>
-                <span className="text-green-400 font-semibold">24</span>
-              </p>
-              <p className="flex justify-between text-sm">
-                <span className="text-gray-300">Success Rate</span>
-                <span className="text-green-400 font-semibold">{successRate}%</span>
-              </p>
-              <p className="flex justify-between text-sm items-center">
-                <span className="text-gray-300">Badge</span>
-                <span className="flex items-center gap-1">
-                  <Icon icon="mdi:medal" className="text-yellow-400 text-lg" />
-                  <span className="font-semibold text-gray-200">{badge}</span>
-                </span>
-              </p>
             </div>
           </div>
         </div>

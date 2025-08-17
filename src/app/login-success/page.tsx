@@ -5,9 +5,14 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import branfluLogo from "@/assest/branfluLogo.png";
 
+
+
 export default function LoginSuccess() {
   const router = useRouter();
   const [message, setMessage] = useState("Processing login...");
+
+  
+  
 
   useEffect(() => {
     // read token from URL (backend redirects to /login-success?token=...)
