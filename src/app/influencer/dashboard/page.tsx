@@ -190,65 +190,12 @@ const CampaignsPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-[#0f172a] text-white">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#111827] flex flex-col py-6 border-r border-gray-700">
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-10 pl-6 -ml-6">
-          <div className="flex justify-center">
-            <Image src={branfluLogo} alt="Branflu Logo" width={60} height={60} />
-          </div>
-          <span className="text-xl font-semibold -ml-4">Branflu</span>
-        </div>
-
-        {/* Menu */}
-        <nav className="flex flex-col gap-6">
-          <div
-            onClick={() => router.push("/influencer/dashboard")}
-            className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
-          >
-            <Icon icon="mdi:view-dashboard-outline" width="20" height="20" />
-            Dashboard
-          </div>
-          <div
-            className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
-             onClick={() => router.push("/influencer/activeCollabration")}
-          >
-            <Icon icon="mdi:circle" width="12" height="12" className="text-green-400" />
-            Active Collaboration
-          </div>
-          <div
-
-            className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
-          >
-            <Icon icon="mdi:chart-line" width="20" height="20" />
-            Marketplace
-          </div>
-          <div
-
-            className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
-          >
-            <Icon icon="mdi:cash-multiple" width="20" height="20" />
-            Earnings
-          </div>
-          <div
-
-            className="flex items-center gap-3 ml-6 text-gray-300 hover:text-white cursor-pointer"
-          >
-            <Icon icon="mdi:clipboard-text-outline" width="20" height="20" />
-            My Campaigns
-          </div>
-        </nav>
-      </aside>
+      
 
       {/* Main Content */}
-      <main className="flex-1 px-8 py-6">
+      <main className="flex-1 px-2 pt-2">
         {/* Top Bar */}
-        <div className="flex justify-end items-center gap-4 mb-4">
-          <IoChatbubbleEllipsesOutline className="text-2xl cursor-pointer" />
-          <IoNotificationsOutline className="text-2xl cursor-pointer" />
-          <FaRegUserCircle className="text-2xl cursor-pointer" />
-        </div>
-
+        
         {/* Title */}
         <h1 className="text-2xl font-semibold">
           Campaigns <span className="text-green-400">in-Progress</span>
@@ -351,9 +298,7 @@ const CampaignsPage: React.FC = () => {
                     <img
                       src={influencer.imageUrl}
                       alt={`${influencer.title} profile`}
-                      width={80}
-                      height={80}
-                      className="rounded-full border-2 border-gray-600 object-cover"
+                      className="w-20 h-20 rounded-full border-2 border-gray-600 object-cover"
                     />
                   ) : (
                     <Icon icon="mdi:account-circle-outline" className="text-7xl text-gray-300" />

@@ -36,7 +36,7 @@ export default function LoginSuccess() {
       // No token present — redirect back to login after short delay
       setMessage("No token found. Redirecting to login...");
       setTimeout(() => {
-        router.push("/login");
+        router.push("pages/login");
       }, 1200);
     }
   }, [router]);
