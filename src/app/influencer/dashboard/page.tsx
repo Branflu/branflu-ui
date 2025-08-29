@@ -10,6 +10,7 @@ import {
 import { FaRegUserCircle, FaYoutube, FaInstagram } from "react-icons/fa";
 import branfluLogo from "@/assest/branfluLogo.png";
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion";
 
 import {
   LineChart,
@@ -39,6 +40,8 @@ interface ChartDataPoint {
   views: number;
   likes: number;
   comments: number;
+  estimatedMinutesWatched: number; // ✅ NEW
+
 }
 
 function parseJwt(token: string | null): any {
@@ -138,6 +141,7 @@ const CampaignsPage: React.FC = () => {
             views: typeof r.views === "number" ? r.views : 0,
             likes: typeof r.likes === "number" ? r.likes : 0,
             comments: typeof r.comments === "number" ? r.comments : 0,
+            estimatedMinutesWatched: typeof r.estimatedMinutesWatched === "number" ? r.estimatedMinutesWatched : 0, // ✅ NEW
           }));
 
           setChartData(formatted);
@@ -152,6 +156,7 @@ const CampaignsPage: React.FC = () => {
                 views: typeof r[1] === "number" ? r[1] : 0,
                 likes: typeof r[3] === "number" ? r[3] : 0,
                 comments: typeof r[4] === "number" ? r[4] : 0,
+                estimatedMinutesWatched: typeof r[5] === "number" ? r[5] : 0, // ✅ NE
               }))
               .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
               .map((r: any) => ({
@@ -190,12 +195,12 @@ const CampaignsPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-[#0f172a] text-white">
-      
+
 
       {/* Main Content */}
       <main className="flex-1 px-2 pt-2">
         {/* Top Bar */}
-        
+
         {/* Title */}
         <h1 className="text-2xl font-semibold">
           Campaigns <span className="text-green-400">in-Progress</span>
@@ -317,7 +322,14 @@ const CampaignsPage: React.FC = () => {
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={chartData}
+                    data={chartData.map(item => ({
+                      ...item,
+                      totalPerformance:
+                        item.views +
+                        item.likes +
+                        item.comments +
+                        item.estimatedMinutesWatched,
+                    }))}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -326,24 +338,12 @@ const CampaignsPage: React.FC = () => {
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
-                          // Force order: views -> likes -> comments
-                          const order: Record<"views" | "likes" | "comments", number> = {
-                            views: 1,
-                            likes: 2,
-                            comments: 3,
-                          };
-
-                          const ordered = [...payload].sort((a, b) => {
-                            const keyA = a.dataKey as keyof typeof order;
-                            const keyB = b.dataKey as keyof typeof order;
-                            return order[keyA] - order[keyB];
-                          });
-
+                          const original = payload[0].payload; // full object
                           return (
                             <div
                               style={{
-                                backgroundColor: "#111827", // Dark tooltip background
-                                border: "1px solid #374151", // Subtle border
+                                backgroundColor: "#111827",
+                                border: "1px solid #374151",
                                 borderRadius: "6px",
                                 padding: "10px",
                                 boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
@@ -355,20 +355,20 @@ const CampaignsPage: React.FC = () => {
                                 {label}
                               </p>
 
-                              {/* Data items */}
-                              {ordered.map((entry, index) => (
-                                <p
-                                  key={`item-${index}`}
-                                  style={{
-                                    color: entry.stroke, // Same color for name & value
-                                    fontSize: "13px",
-                                    margin: "2px 0",
-                                    fontWeight: "500",
-                                  }}
-                                >
-                                  {entry.name} : {entry.value.toLocaleString()}
-                                </p>
-                              ))}
+                              {/* Individual metrics */}
+                              <p style={{ color: "#f59f00", fontSize: "13px", margin: "2px 0" }}>
+                                Views: {original.views}
+                              </p>
+                              <p style={{ color: "#15aabf", fontSize: "13px", margin: "2px 0" }}>
+                                Likes: {original.likes}
+                              </p>
+                              <p style={{ color: "#e64980", fontSize: "13px", margin: "2px 0" }}>
+                                Comments: {original.comments}
+                              </p>
+                              <p style={{ color: "#51cf66", fontSize: "13px", margin: "2px 0" }}>
+                                Watch Time: {Math.floor(original.estimatedMinutesWatched / 60)}h{" "}
+                                {original.estimatedMinutesWatched % 60}m
+                              </p>
                             </div>
                           );
                         }
@@ -376,15 +376,43 @@ const CampaignsPage: React.FC = () => {
                       }}
                     />
 
-                    <Legend wrapperStyle={{ color: "#9ca3af" }} />
-                    <Line type="monotone" dataKey="views" stroke="#4c6ef5" dot={false} />
-                    <Line type="monotone" dataKey="likes" stroke="#15aabf" dot={false} />
-                    <Line type="monotone" dataKey="comments" stroke="#e64980" dot={false} />
+
+                    {/* ✅ Single Combined Line */}
+                    <Line
+                      type="linear"
+                      dataKey="totalPerformance"
+                      stroke="#3b82f6"
+                      strokeWidth={1}
+                      dot={false}
+                      name="Performance Index"
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-gray-500 italic text-center mt-20">No performance data available.</p>
+                <p className="text-gray-500 italic text-center mt-20">
+                  No performance data available.
+                </p>
               )}
+              <div className="flex items-start justify-start mt-1 pl-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2 text-blue-400 flex-shrink-0 mt-[2px]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+                  />
+                </svg>
+                <span className="text-gray-400 text-[12px] leading-snug">
+                  This performance data is provided directly by YouTube.
+                  Hover over any chart point to view detailed metrics.
+                </span>
+              </div>
             </div>
           </div>
         </div>
