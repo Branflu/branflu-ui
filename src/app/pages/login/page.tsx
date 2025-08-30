@@ -5,6 +5,7 @@ import { Button } from "@heroui/react";
 import { FaFacebook, FaYoutube, FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import branfluWholeLogo from "@/assest/branfluWholeLogo.png";
 import branfluLogo from "@/assest/branfluLogo.png";
 
@@ -14,7 +15,7 @@ export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<"influencer" | "brand">("influencer");
   const [isSignUp, setIsSignUp] = useState(false);
 
-  // form state (for signup)
+  // form state (for signup & brand manual login)
   const [formData, setFormData] = useState({
     name: "",
     payPalEmail: "",
@@ -47,9 +48,6 @@ export default function LoginPage() {
   const [digits, setDigits] = useState<string[]>(Array(DIGITS).fill(""));
   const inputsRef = useRef<HTMLInputElement[]>([]);
 
-  // success toast
-  const [successToast, setSuccessToast] = useState("");
-
   useEffect(() => {
     const t = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(t);
@@ -76,13 +74,13 @@ export default function LoginPage() {
     return `${local[0]}${"*".repeat(Math.min(3, local.length - 2))}${local.slice(-1)}@${domain}`;
   };
 
-  // social handlers
+  // social handlers (OAuth flows handled by backend redirect)
   const handleFacebookLogin = () => (window.location.href = "http://localhost:8080/api/facebook/login");
   const handleYouTubeLogin = () => (window.location.href = "http://localhost:8080/api/youtube/auth");
   const handleGoogleLogin = () => (window.location.href = "http://localhost:8080/auth/google/auth");
   const handleGoogleSignup = () => (window.location.href = "http://localhost:8080/auth/google/auth");
 
-  // form change
+  // handle generic input change (works for login & signup fields)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
@@ -139,9 +137,7 @@ export default function LoginPage() {
   // OTP: frontend requests
   // -------------------------
   const sendOtpRequest = async (email: string) => {
-    // clear previous errors
     setOtpError("");
-    // sendOtpRequest still guards, but we already validated before calling
     setSendingOtp(true);
     try {
       const res = await fetch("http://localhost:8080/api/otp/send", {
@@ -154,10 +150,11 @@ export default function LoginPage() {
       let json: any = null;
       try {
         json = text ? JSON.parse(text) : null;
-      } catch { }
+      } catch {}
 
       if (!res.ok) {
         const msg = json?.message || text || `Send OTP failed (${res.status})`;
+        toast.error(msg);
         throw new Error(msg);
       }
 
@@ -165,12 +162,14 @@ export default function LoginPage() {
       setCooldown(json?.cooldown || 60);
       setOtpStage("sent");
       setIsSignUp(true);
+      toast.success("OTP sent to your email");
 
       // focus first OTP input
       setTimeout(() => inputsRef.current[0]?.focus(), 120);
     } catch (err: any) {
       console.error("sendOtp error:", err);
       setOtpError(err?.message || "Failed to send OTP");
+      toast.error(err?.message || "Failed to send OTP");
     } finally {
       setSendingOtp(false);
     }
@@ -190,21 +189,25 @@ export default function LoginPage() {
       let json: any = null;
       try {
         json = text ? JSON.parse(text) : null;
-      } catch { }
+      } catch {}
 
       if (!res.ok) {
         const msg = json?.message || text || `Verify failed (${res.status})`;
+        toast.error(msg);
         throw new Error(msg);
       }
 
+      toast.success("OTP verified");
       return true;
     } catch (err: any) {
       console.warn("verify error:", err);
       if (otp === "123456") {
         // dev fallback — remove in prod
+        toast.success("Dev fallback: OTP accepted");
         return true;
       }
       setOtpError(err?.message || "Verification failed");
+      toast.error(err?.message || "Verification failed");
       return false;
     } finally {
       setVerifyingOtp(false);
@@ -226,7 +229,7 @@ export default function LoginPage() {
 
     try {
       if (activeTab === "brand") {
-        // ----- BRAND: perform a real browser POST so server-side redirect works -----
+        // Browser POST so server redirect works (brand)
         const form = document.createElement("form");
         form.method = "POST";
         form.action = "http://localhost:8080/api/business/register";
@@ -244,7 +247,7 @@ export default function LoginPage() {
         Object.entries(fields).forEach(([k, v]) => {
           const i = document.createElement("input");
           i.type = "hidden";
-          i.name = k; // must match backend attribute names
+          i.name = k;
           i.value = String(v ?? "");
           form.appendChild(i);
         });
@@ -253,7 +256,7 @@ export default function LoginPage() {
         form.submit();
         return true;
       } else {
-        // ----- INFLUENCER: SPA/AJAX flow -----
+        // INFLUENCER: SPA/AJAX
         const url = "http://localhost:8080/api/influencer/register";
         const res = await fetch(url, {
           method: "POST",
@@ -265,35 +268,42 @@ export default function LoginPage() {
         let json: any = null;
         try {
           json = text ? JSON.parse(text) : null;
-        } catch { }
+        } catch {}
 
         if (!res.ok) {
           if (json) {
-            // map backend validation errors to UI
+            // map backend validation errors to UI + toast
             if (json.code === "BRANFLU__2007" || (json.message && json.message.toLowerCase().includes("password"))) {
               setErrors((e) => ({ ...e, password: json.message || "Invalid password" }));
-              setAttemptedSubmit(true); // ensure visible
+              setAttemptedSubmit(true);
+              toast.error(json.message || "Invalid password");
             } else if (json.field === "payPalEmail" || (json.message && json.message.toLowerCase().includes("email"))) {
               setErrors((e) => ({ ...e, payPalEmail: json.message || "Invalid email" }));
               setAttemptedSubmit(true);
+              toast.error(json.message || "Email issue");
             } else if (json.field === "name") {
               setErrors((e) => ({ ...e, name: json.message || "Invalid name" }));
               setAttemptedSubmit(true);
+              toast.error(json.message || "Name issue");
             } else {
+              toast.error(json.message || `Registration failed (${res.status})`);
               throw new Error(json.message || text || `Registration failed (${res.status})`);
             }
             return false;
           }
           const errMsg = text || `Registration failed (${res.status})`;
+          toast.error(errMsg);
           throw new Error(errMsg);
         }
 
+        toast.success("Account created successfully 🎉");
         router.replace("/login-redirecting");
         return true;
       }
     } catch (err: any) {
       console.error("Registration error:", err);
       setOtpError(err?.message || "Registration failed");
+      toast.error(err?.message || "Registration failed");
       return false;
     }
   };
@@ -329,18 +339,63 @@ export default function LoginPage() {
   // Actions
   // -------------------------
   const onSignUpClick = async () => {
-    // make errors visible
     setAttemptedSubmit(true);
-
-    // run validation and show inline messages
     const ok = validateAll();
-    if (!ok) {
-      // don't proceed; user sees errors above inputs
+    if (!ok) return;
+    await sendOtpRequest(formData.payPalEmail);
+  };
+
+  // SPA-friendly login that shows toasts on failure (no server-side page redirect)
+  const handleLogin = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+
+    // Basic validation
+    if (!formData.payPalEmail || !formData.password) {
+      toast.error("Please enter email and password");
       return;
     }
 
-    // proceed to send OTP
-    await sendOtpRequest(formData.payPalEmail);
+    try {
+      const res = await fetch("http://localhost:8080/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payPalEmail: formData.payPalEmail,
+          password: formData.password,
+        }),
+        credentials: "include", // important: accept HttpOnly cookie from backend
+      });
+
+      const text = await res.text().catch(() => "");
+      let json: any = null;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {}
+
+      if (!res.ok) {
+        // Prefer structured message from backend, fallback to text
+        const msg = json?.message || text || "Login failed";
+        // map common server messages to friendly toasts
+        if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("password")) {
+          toast.error("Incorrect email or password.");
+        } else if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("exist")) {
+          toast.error("Email does not exist.");
+        } else {
+          toast.error(msg);
+        }
+        return;
+      }
+
+      // Success — backend should have set HttpOnly cookie; route user to redirect page
+      toast.success("Logged in — redirecting...");
+      // Prefer redirect returned by backend JSON; fall back to /login-redirecting
+      const redirectPath = json?.redirect || "/login-redirecting";
+      // immediate navigation
+      router.replace(redirectPath);
+    } catch (err: any) {
+      console.error("Login request failed:", err);
+      toast.error("Network error. Please try again.");
+    }
   };
 
   const handleVerifyAndRegister = async () => {
@@ -348,6 +403,7 @@ export default function LoginPage() {
     const otp = digits.join("");
     if (otp.length !== DIGITS) {
       setOtpError("Please enter the complete code.");
+      toast.error("Please enter the complete code.");
       return;
     }
     const ok = await verifyOtpRequest(formData.payPalEmail, otp);
@@ -355,10 +411,10 @@ export default function LoginPage() {
 
     const registered = await submitRegistration();
     if (registered) {
-      setSuccessToast("Verified ✓ Redirecting...");
+      toast.success("Verified ✓ Redirecting...");
       setTimeout(() => {
         if (activeTab === "brand") {
-          // server-side redirect for brand
+          // server-side redirect occurred after form submit for brand
         } else {
           router.replace("/login-redirecting");
         }
@@ -383,12 +439,10 @@ export default function LoginPage() {
     setActiveTab(tab);
     setIsSignUp(false);
     setOtpStage("idle");
-    // reset errors & submit state
     setErrors({ name: "", payPalEmail: "", password: "" });
     setAttemptedSubmit(false);
   };
 
-  // convenience booleans for password checklist rendering
   const pw = formData.password || "";
   const pwChecks = {
     length: pwRules.length(pw),
@@ -428,18 +482,8 @@ export default function LoginPage() {
           onClick={() => router.push("/")}
         />
         <div className="flex gap-4 text-sm font-medium text-white">
-          <button
-            onClick={() => router.push("/about")}
-            className="hover:text-pink-400 transition-colors duration-300 cursor-pointer"
-          >
-            About
-          </button>
-          <button
-            onClick={() => router.push("/contact")}
-            className="hover:text-pink-400 transition-colors duration-300 cursor-pointer"
-          >
-            Contact
-          </button>
+          <button onClick={() => router.push("/about")} className="hover:text-pink-400 transition-colors duration-300 cursor-pointer">About</button>
+          <button onClick={() => router.push("/contact")} className="hover:text-pink-400 transition-colors duration-300 cursor-pointer">Contact</button>
         </div>
       </div>
 
@@ -452,30 +496,15 @@ export default function LoginPage() {
             Discover <span className="text-pink-500">Branflu</span>
           </h1>
           <p className="text-lg text-gray-300 leading-relaxed">
-            <strong>Branflu</strong> bridges the gap between creators and brands, making
-            collaborations effortless and impactful. Whether you’re an influencer looking
-            to monetize your reach or a business aiming to expand your audience, Branflu
-            provides the tools and opportunities to grow together.
+            <strong>Branflu</strong> bridges the gap between creators and brands, making collaborations effortless and impactful.
           </p>
         </div>
 
         {/* Right Card */}
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-xl w-full max-w-md h-[460px] self-start mt-4">
           <div className="flex justify-center mb-4">
-            <button
-              onClick={() => handleTabChange("influencer")}
-              className={`px-5 py-2 rounded-l-xl transition-all duration-300 ${activeTab === "influencer" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400"
-                }`}
-            >
-              Influencer
-            </button>
-            <button
-              onClick={() => handleTabChange("brand")}
-              className={`px-5 py-2 rounded-r-xl transition-all duration-300 ${activeTab === "brand" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400"
-                }`}
-            >
-              Brand
-            </button>
+            <button onClick={() => handleTabChange("influencer")} className={`px-5 py-2 rounded-l-xl transition-all duration-300 ${activeTab === "influencer" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400"}`}>Influencer</button>
+            <button onClick={() => handleTabChange("brand")} className={`px-5 py-2 rounded-r-xl transition-all duration-300 ${activeTab === "brand" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400"}`}>Brand</button>
           </div>
 
           <div className="flex flex-col h-full justify-between">
@@ -483,42 +512,43 @@ export default function LoginPage() {
               {/* LOGIN view */}
               {!isSignUp && activeTab === "influencer" && (
                 <div className="space-y-4 pt-2">
-                  <Button
-                    onClick={handleFacebookLogin}
-                    className="w-full bg-blue-700 text-white font-semibold text-base py-3 flex items-center justify-center gap-2 rounded-xl hover:bg-blue-800 transition-all duration-300"
-                  >
-                    <FaFacebook size={18} /> Continue with Facebook
+                  <Button onClick={handleYouTubeLogin} className="w-full bg-white text-black font-semibold text-base py-3 flex items-center justify-center gap-2 rounded-xl shadow-lg hover:bg-red-50 transition-all duration-300 transform hover:scale-[1.02]">
+                    <FaYoutube size={20} className="text-red-600" /> Continue with YouTube
                   </Button>
-                  <Button
-                    onClick={handleYouTubeLogin}
-                    className="w-full bg-red-600 text-white font-semibold text-base py-3 flex items-center justify-center gap-2 rounded-xl hover:bg-red-700 transition-all duration-300"
-                  >
-                    <FaYoutube size={18} /> Continue with YouTube
+
+                  <Button disabled className="w-full bg-gradient-to-r from-blue-700/60 to-blue-600/40 text-white font-semibold text-base py-3 flex items-center justify-center gap-2 rounded-xl opacity-60 cursor-not-allowed shadow-md">
+                    <FaFacebook size={20} className="drop-shadow-md" /> Continue with Facebook (Coming Soon 🚧)
                   </Button>
                 </div>
               )}
 
+              {/* BRAND login (manual) */}
               {!isSignUp && activeTab === "brand" && (
                 <div className="space-y-3 pt-1">
+                  {/* Bind these inputs to formData so handleLogin can use them */}
                   <input
+                    name="payPalEmail"
                     type="email"
                     placeholder="you@company.com"
+                    value={formData.payPalEmail}
+                    onChange={handleChange}
                     className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl outline-none placeholder:text-gray-400"
                   />
                   <input
-                    type="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
                     className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl outline-none placeholder:text-gray-400"
                   />
-                  <Button className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 font-semibold transition-all duration-300">
+                  <Button onClick={handleLogin} className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 font-semibold transition-all duration-300">
                     Login
                   </Button>
 
                   <div className="relative w-full text-center my-3">
                     <hr className="border-t border-gray-600" />
-                    <span className="absolute inset-0 flex items-center justify-center text-gray-400 bg-[#1e293b] px-2 text-sm">
-                      or
-                    </span>
+                    <span className="absolute inset-0 flex items-center justify-center text-gray-400 bg-[#1e293b] px-2 text-sm">or</span>
                   </div>
 
                   <Button onClick={handleGoogleLogin} className="w-full bg-white text-black py-3 rounded-xl hover:bg-gray-100 font-semibold flex items-center justify-center gap-2 transition-all duration-300">
@@ -527,9 +557,7 @@ export default function LoginPage() {
 
                   <div className="text-center text-sm text-gray-400 pt-2">
                     Don't have an account?{" "}
-                    <button onClick={() => setIsSignUp(true)} className="text-blue-400 hover:underline hover:text-blue-300">
-                      Sign Up
-                    </button>
+                    <button onClick={() => setIsSignUp(true)} className="text-blue-400 hover:underline hover:text-blue-300">Sign Up</button>
                   </div>
                 </div>
               )}
@@ -540,7 +568,6 @@ export default function LoginPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                     {/* Name */}
                     <div className="col-span-1">
-                      {/* reserved space for error -> prevents layout jump */}
                       <div className="h-4">
                         {attemptedSubmit && errors.name ? (
                           <p className="text-red-400 text-xs">{errors.name}</p>
@@ -548,17 +575,10 @@ export default function LoginPage() {
                           <span className="block text-transparent text-xs">placeholder</span>
                         )}
                       </div>
-                      <input
-                        name="name"
-                        type="text"
-                        placeholder="Brand Name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className="col-span-1 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm"
-                      />
+                      <input name="name" type="text" placeholder="Brand Name" value={formData.name} onChange={handleChange} className="col-span-1 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm" />
                     </div>
 
-                    {/* Email - narrower on md+ screens */}
+                    {/* Email */}
                     <div className="col-span-1">
                       <div className="h-4">
                         {attemptedSubmit && errors.payPalEmail ? (
@@ -567,14 +587,7 @@ export default function LoginPage() {
                           <span className="block text-transparent text-xs">placeholder</span>
                         )}
                       </div>
-                      <input
-                        name="payPalEmail"
-                        type="email"
-                        placeholder="Brand Email"
-                        value={formData.payPalEmail}
-                        onChange={handleChange}
-                        className="flex-1 min-w-0 bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm md:max-w-[220px] w-full"
-                      />
+                      <input name="payPalEmail" type="email" placeholder="Brand Email" value={formData.payPalEmail} onChange={handleChange} className="flex-1 min-w-0 bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm md:max-w-[220px] w-full" />
                     </div>
 
                     {/* Password */}
@@ -587,76 +600,38 @@ export default function LoginPage() {
                         )}
                       </div>
 
-                      {/* relative wrapper for the toggle button */}
                       <div className="relative">
-                        <input
-                          name="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Password"
-                          value={formData.password}
-                          onChange={handleChange}
-                          className="col-span-1 md:col-span-2 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm pr-10"
-                          aria-describedby="password-help"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((s) => !s)}
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-white focus:outline-none"
-                        >
+                        <input name="password" type={showPassword ? "text" : "password"} placeholder="Password" value={formData.password} onChange={handleChange} className="col-span-1 md:col-span-2 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm pr-10" aria-describedby="password-help" />
+                        <button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-white focus:outline-none">
                           {showPassword ? <FaEyeSlash /> : <FaEye />}
                         </button>
                       </div>
                     </div>
 
-                    <input
-                      name="websiteUrl"
-                      type="url"
-                      placeholder="Website URL (Optional)"
-                      value={formData.websiteUrl}
-                      onChange={handleChange}
-                      className="col-span-1 md:col-span-2 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm"
-                    />
-                    <textarea
-                      name="bio"
-                      placeholder="Short Bio (Optional)"
-                      value={formData.bio}
-                      onChange={handleChange}
-                      rows={2}
-                      className="col-span-1 md:col-span-2 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm resize-none max-h-28"
-                    />
+                    <input name="websiteUrl" type="url" placeholder="Website URL (Optional)" value={formData.websiteUrl} onChange={handleChange} className="col-span-1 md:col-span-2 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm" />
+                    <textarea name="bio" placeholder="Short Bio (Optional)" value={formData.bio} onChange={handleChange} rows={2} className="col-span-1 md:col-span-2 w-full bg-gray-800 text-white px-3 py-2 rounded-xl outline-none placeholder:text-gray-400 text-sm resize-none max-h-28" />
 
                     <div className="hidden md:block" />
                   </div>
 
-                  {/* ✅ Sign Up + Google side by side */}
+                  {/* Sign Up + Google */}
                   <div className="pt-3 flex justify-center gap-3">
-                    <button
-                      onClick={onSignUpClick}
-                      disabled={sendingOtp}
-                      className="flex-1 px-3 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold transition-all duration-300 text-sm"
-                    >
+                    <button onClick={onSignUpClick} disabled={sendingOtp} className="flex-1 px-3 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold transition-all duration-300 text-sm">
                       {sendingOtp ? "Sending..." : "Sign Up"}
                     </button>
+
                     <div className="flex items-center w-half gap-2 text-gray-400 text-xs">
                       <div className="flex-1 h-px bg-gray-600"></div>
                       <span>OR</span>
                       <div className="flex-1 h-px bg-gray-600"></div>
                     </div>
 
-                    <button
-                      onClick={handleGoogleSignup}
-                      className="flex-1 px-3 py-2 rounded-xl bg-white text-black font-semibold flex items-center justify-center gap-2 hover:bg-gray-100 transition-all duration-300 text-sm"
-                    >
-                      Sign up with <FaGoogle />
-                    </button>
+                    <button onClick={handleGoogleSignup} className="flex-1 px-3 py-2 rounded-xl bg-white text-black font-semibold flex items-center justify-center gap-2 hover:bg-gray-100 transition-all duration-300 text-sm">Sign up with <FaGoogle /></button>
                   </div>
 
                   <div className="text-center text-xs text-gray-400 pt-1">
                     Already have an account?{" "}
-                    <button onClick={() => setIsSignUp(false)} className="text-blue-400 hover:underline hover:text-blue-300">
-                      Login
-                    </button>
+                    <button onClick={() => setIsSignUp(false)} className="text-blue-400 hover:underline hover:text-blue-300">Login</button>
                   </div>
                 </div>
               )}
@@ -664,24 +639,11 @@ export default function LoginPage() {
               {/* OTP VIEW */}
               {isSignUp && otpStage === "sent" && (
                 <div className="pt-2">
-                  <div className="text-sm text-gray-300 mb-3">
-                    We've sent a code to <strong className="text-white">{maskedEmail}</strong>
-                  </div>
+                  <div className="text-sm text-gray-300 mb-3">We've sent a code to <strong className="text-white">{maskedEmail}</strong></div>
 
                   <div className="flex gap-3 justify-center mb-2" onPaste={handlePaste}>
                     {digits.map((d, i) => (
-                      <input
-                        key={i}
-                        ref={(el) => (inputsRef.current[i] = el as HTMLInputElement)}
-                        value={d}
-                        onChange={(e) => onDigitChange(i, e.target.value)}
-                        onKeyDown={(e) => onKeyDown(e, i)}
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={1}
-                        disabled={verifyingOtp}
-                        className="w-12 h-12 text-center rounded-lg bg-gray-800 text-white text-lg outline-none disabled:opacity-60"
-                      />
+                      <input key={i} ref={(el) => (inputsRef.current[i] = el as HTMLInputElement)} value={d} onChange={(e) => onDigitChange(i, e.target.value)} onKeyDown={(e) => onKeyDown(e, i)} inputMode="numeric" pattern="[0-9]*" maxLength={1} disabled={verifyingOtp} className="w-12 h-12 text-center rounded-lg bg-gray-800 text-white text-lg outline-none disabled:opacity-60" />
                     ))}
                   </div>
 
@@ -689,52 +651,27 @@ export default function LoginPage() {
 
                   <div className="flex items-center justify-between mt-4">
                     <div className="text-sm text-gray-400">
-                      {cooldown > 0 ? (
-                        <span>Resend in {cooldown}s</span>
-                      ) : (
-                        <button onClick={handleResend} className="underline text-sm text-blue-300">
-                          Resend code
-                        </button>
-                      )}
+                      {cooldown > 0 ? <span>Resend in {cooldown}s</span> : <button onClick={handleResend} className="underline text-sm text-blue-300">Resend code</button>}
                     </div>
 
                     <div className="flex gap-2">
-                      <button
-                        onClick={cancelOtpFlow}
-                        disabled={verifyingOtp}
-                        className="px-3 py-2 rounded-lg border border-gray-600 text-sm disabled:opacity-60"
-                      >
-                        Cancel
-                      </button>
-                      <Button
-                        onClick={handleVerifyAndRegister}
-                        disabled={verifyingOtp}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg disabled:opacity-60"
-                      >
+                      <button onClick={cancelOtpFlow} disabled={verifyingOtp} className="px-3 py-2 rounded-lg border border-gray-600 text-sm disabled:opacity-60">Cancel</button>
+                      <Button onClick={handleVerifyAndRegister} disabled={verifyingOtp} className="bg-green-600 text-white px-4 py-2 rounded-lg disabled:opacity-60">
                         {verifyingOtp ? "Verifying..." : "Verify & Continue"}
                       </Button>
                     </div>
                   </div>
 
-                  <p className="mt-3 text-xs text-gray-400 text-center">
-                    If you don't receive the email, check spam or try resending. (Dev fallback accepts 123456)
-                  </p>
+                  <p className="mt-3 text-xs text-gray-400 text-center">If you don't receive the email, check spam or try resending. (Dev fallback accepts 123456)</p>
                 </div>
               )}
             </div>
 
-            {/* footer area kept minimal */}
-            <div className="text-center text-xs text-gray-400 pt-2">{/* reserved for extra help text */}</div>
+            {/* footer */}
+            <div className="text-center text-xs text-gray-400 pt-2"></div>
           </div>
         </div>
       </div>
-
-      {/* ✅ Success Toast while staying on OTP view */}
-      {successToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg">
-          {successToast}
-        </div>
-      )}
     </div>
   );
 }
