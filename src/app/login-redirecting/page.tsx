@@ -31,9 +31,9 @@ export default function BusinessLoginSuccess() {
         router.push("/business/dashboard");
       }, 800);
     } else {
-      setMessage("No token found. Redirecting to login...");
+      setMessage("No token found for dashboard. Redirecting to login...");
       setTimeout(() => {
-        router.push("/login"); // ✅ fixed path (was "pages/login")
+        router.push("pages/login"); // ✅ fixed path (was "pages/login")
       }, 1200);
     }
   }, [router]);

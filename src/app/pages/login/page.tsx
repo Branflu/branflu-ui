@@ -297,7 +297,7 @@ export default function LoginPage() {
         }
 
         toast.success("Account created successfully 🎉");
-        router.replace("/login-redirecting");
+        router.replace("/login-success");
         return true;
       }
     } catch (err: any) {
@@ -388,8 +388,8 @@ export default function LoginPage() {
 
       // Success — backend should have set HttpOnly cookie; route user to redirect page
       toast.success("Logged in — redirecting...");
-      // Prefer redirect returned by backend JSON; fall back to /login-redirecting
-      const redirectPath = json?.redirect || "/login-redirecting";
+      // Prefer redirect returned by backend JSON; fall back to /login-success
+      const redirectPath = json?.redirect || "/login-success";
       // immediate navigation
       router.replace(redirectPath);
     } catch (err: any) {
@@ -416,7 +416,7 @@ export default function LoginPage() {
         if (activeTab === "brand") {
           // server-side redirect occurred after form submit for brand
         } else {
-          router.replace("/login-redirecting");
+          router.replace("/login-success");
         }
       }, 800);
     }

@@ -5,40 +5,32 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import branfluLogo from "@/assest/branfluLogo.png";
 
-
-
-export default function LoginSuccess() {
+export default function LoginRedirect() {
   const router = useRouter();
-  const [message, setMessage] = useState("Processing login...");
-
-  
-  
+  const [message, setMessage] = useState("Checking login status...");
 
   useEffect(() => {
-    // read token from URL (backend redirects to /login-success?token=...)
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-
-    if (token) {
-      // save token to localStorage for dashboard to use
-      localStorage.setItem("jwtToken", token);
-
-      // remove token from URL for cleanliness
-      const cleanUrl = window.location.origin + window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-
-      setMessage("Login successful — redirecting to dashboard...");
-      // small delay so user sees a message (optional)
-      setTimeout(() => {
-        router.push("/influencer/dashboard");
-      }, 800);
-    } else {
-      // No token present — redirect back to login after short delay
-      setMessage("No token found. Redirecting to login...");
-      setTimeout(() => {
-        router.push("pages/login");
-      }, 1200);
-    }
+    fetch(`http://localhost:8080/api/me`, {
+      credentials: "include", // important: sends HTTP-only cookie
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const user = await res.json();
+          setMessage("Login successful — Redirecting ...");
+          setTimeout(() => {
+            if (user.role === "BUSINESS") router.push("/business/dashboard");
+            else if (user.role === "INFLUENCER") router.push("/influencer/dashboard");
+            else router.push("pages/login"); // fallback
+          }, 800);
+        } else {
+          setMessage("Not logged in. Redirecting to login...");
+          setTimeout(() => router.push("pages/login"), 1200);
+        }
+      })
+      .catch(() => {
+        setMessage("Error verifying login. Redirecting...");
+        setTimeout(() => router.push("pages/login"), 1200);
+      });
   }, [router]);
 
   return (
