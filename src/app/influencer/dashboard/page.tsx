@@ -15,6 +15,7 @@ import {
   CartesianGrid,
 } from "recharts";
 
+// ================= Types =================
 interface Influencer {
   title: string;
   imageUrl?: string;
@@ -41,6 +42,7 @@ interface AnalyticsRecord {
   estimatedMinutesWatched?: number;
 }
 
+// ================= Utils =================
 function formatDateForXAxis(isoDate: string): string {
   try {
     const d = new Date(isoDate);
@@ -50,6 +52,7 @@ function formatDateForXAxis(isoDate: string): string {
   }
 }
 
+// ================= Page =================
 const CampaignsPage: React.FC = () => {
   const router = useRouter();
   const [influencer, setInfluencer] = useState<Influencer | null>(null);
@@ -92,7 +95,9 @@ const CampaignsPage: React.FC = () => {
             likes: typeof r.likes === "number" ? r.likes : 0,
             comments: typeof r.comments === "number" ? r.comments : 0,
             estimatedMinutesWatched:
-              typeof r.estimatedMinutesWatched === "number" ? r.estimatedMinutesWatched : 0,
+              typeof r.estimatedMinutesWatched === "number"
+                ? r.estimatedMinutesWatched
+                : 0,
           }));
 
           setChartData(formatted);
@@ -102,7 +107,7 @@ const CampaignsPage: React.FC = () => {
 
         setLoading(false);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         setError(err.message || "Unknown error");
         setLoading(false);
       });
@@ -152,8 +157,12 @@ const CampaignsPage: React.FC = () => {
             </select>
           </div>
 
-          <button className="px-4 py-2 border border-gray-500 rounded-md text-sm">Filters</button>
-          <button className="px-4 py-2 border border-gray-500 rounded-md text-sm">Apply</button>
+          <button className="px-4 py-2 border border-gray-500 rounded-md text-sm">
+            Filters
+          </button>
+          <button className="px-4 py-2 border border-gray-500 rounded-md text-sm">
+            Apply
+          </button>
         </div>
 
         {/* Campaigns + Right Card */}
@@ -169,10 +178,13 @@ const CampaignsPage: React.FC = () => {
                   <div>
                     <h2 className="text-lg font-semibold">{campaign.title}</h2>
                     <p className="text-gray-400 text-sm mt-1 max-w-lg">
-                      Collaborate with top beauty influencers to showcase BrandX&apos;s new summer
-                      skincare range through engaging Instagram reels and authentic product reviews.
+                      Collaborate with top beauty influencers to showcase
+                      BrandX&apos;s new summer skincare range through engaging
+                      Instagram reels and authentic product reviews.
                     </p>
-                    <p className="mt-2 text-yellow-400 text-xs font-medium">Requirement</p>
+                    <p className="mt-2 text-yellow-400 text-xs font-medium">
+                      Requirement
+                    </p>
                   </div>
                   <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-sm font-bold">
                     {campaign.brand}
@@ -219,7 +231,10 @@ const CampaignsPage: React.FC = () => {
                       className="w-20 h-20 rounded-full border-2 border-gray-600 object-cover"
                     />
                   ) : (
-                    <Icon icon="mdi:account-circle-outline" className="text-7xl text-gray-300" />
+                    <Icon
+                      icon="mdi:account-circle-outline"
+                      className="text-7xl text-gray-300"
+                    />
                   )}
                   <h2 className="mt-3 text-lg font-bold">{influencer.title}</h2>
                   <span className="text-sm text-gray-400">Influencer</span>
@@ -236,7 +251,10 @@ const CampaignsPage: React.FC = () => {
                     data={chartData.map((item) => ({
                       ...item,
                       totalPerformance:
-                        item.views + item.likes + item.comments + item.estimatedMinutesWatched,
+                        item.views +
+                        item.likes +
+                        item.comments +
+                        item.estimatedMinutesWatched,
                     }))}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
@@ -246,7 +264,7 @@ const CampaignsPage: React.FC = () => {
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
-                          const original = payload[0].payload;
+                          const original = payload[0].payload as ChartDataPoint;
                           return (
                             <div
                               style={{
@@ -258,22 +276,51 @@ const CampaignsPage: React.FC = () => {
                               }}
                             >
                               <p
-                                style={{ color: "#9ca3af", fontSize: "12px", marginBottom: "4px" }}
+                                style={{
+                                  color: "#9ca3af",
+                                  fontSize: "12px",
+                                  marginBottom: "4px",
+                                }}
                               >
                                 {label}
                               </p>
-                              <p style={{ color: "#f59f00", fontSize: "13px", margin: "2px 0" }}>
+                              <p
+                                style={{
+                                  color: "#f59f00",
+                                  fontSize: "13px",
+                                  margin: "2px 0",
+                                }}
+                              >
                                 Views: {original.views}
                               </p>
-                              <p style={{ color: "#15aabf", fontSize: "13px", margin: "2px 0" }}>
+                              <p
+                                style={{
+                                  color: "#15aabf",
+                                  fontSize: "13px",
+                                  margin: "2px 0",
+                                }}
+                              >
                                 Likes: {original.likes}
                               </p>
-                              <p style={{ color: "#e64980", fontSize: "13px", margin: "2px 0" }}>
+                              <p
+                                style={{
+                                  color: "#e64980",
+                                  fontSize: "13px",
+                                  margin: "2px 0",
+                                }}
+                              >
                                 Comments: {original.comments}
                               </p>
-                              <p style={{ color: "#51cf66", fontSize: "13px", margin: "2px 0" }}>
-                                Watch Time: {Math.floor(original.estimatedMinutesWatched / 60)}h{" "}
-                                {original.estimatedMinutesWatched % 60}m
+                              <p
+                                style={{
+                                  color: "#51cf66",
+                                  fontSize: "13px",
+                                  margin: "2px 0",
+                                }}
+                              >
+                                Watch Time:{" "}
+                                {Math.floor(original.estimatedMinutesWatched / 60)}
+                                h {original.estimatedMinutesWatched % 60}m
                               </p>
                             </div>
                           );
