@@ -73,7 +73,7 @@ export default function LoginPage() {
     if (local.length <= 2) return `${local[0]}***@${domain}`;
     return `${local[0]}${"*".repeat(Math.min(3, local.length - 2))}${local.slice(-1)}@${domain}`;
   };
-  
+
   const API_HOST = process.env.NEXT_PUBLIC_API_HOST;
   // social handlers (OAuth flows handled by backend redirect)
   const handleFacebookLogin = () => (window.location.href = `${API_HOST}/api/facebook/login`);
@@ -151,7 +151,7 @@ export default function LoginPage() {
       let json: any = null;
       try {
         json = text ? JSON.parse(text) : null;
-      } catch {}
+      } catch { }
 
       if (!res.ok) {
         const msg = json?.message || text || `Send OTP failed (${res.status})`;
@@ -190,7 +190,7 @@ export default function LoginPage() {
       let json: any = null;
       try {
         json = text ? JSON.parse(text) : null;
-      } catch {}
+      } catch { }
 
       if (!res.ok) {
         const msg = json?.message || text || `Verify failed (${res.status})`;
@@ -230,35 +230,7 @@ export default function LoginPage() {
 
     try {
       if (activeTab === "brand") {
-        // Browser POST so server redirect works (brand)
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = `${API_HOST}/api/business/register`;
-        form.style.display = "none";
-
-        const fields: Record<string, any> = {
-          name: payload.name ?? "",
-          payPalEmail: payload.payPalEmail ?? "",
-          password: payload.password ?? "",
-          role: payload.role ?? "BUSINESS",
-          websiteUrl: payload.websiteUrl ?? "",
-          bio: payload.bio ?? "",
-        };
-
-        Object.entries(fields).forEach(([k, v]) => {
-          const i = document.createElement("input");
-          i.type = "hidden";
-          i.name = k;
-          i.value = String(v ?? "");
-          form.appendChild(i);
-        });
-
-        document.body.appendChild(form);
-        form.submit();
-        return true;
-      } else {
-        // INFLUENCER: SPA/AJAX
-        const url = `${API_HOST}/api/influencer/register`;
+        const url = `${API_HOST}/api/business/register`;
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -269,45 +241,68 @@ export default function LoginPage() {
         let json: any = null;
         try {
           json = text ? JSON.parse(text) : null;
-        } catch {}
+        } catch {
+          /* ignore invalid JSON */
+        }
 
         if (!res.ok) {
           if (json) {
-            // map backend validation errors to UI + toast
-            if (json.code === "BRANFLU__2007" || (json.message && json.message.toLowerCase().includes("password"))) {
+            if (json.code === "BRANFLU__ERROR-2004") {
+              toast.error("PayPal email already exists. Please log in instead.");
+              setErrors((e) => ({ ...e, payPalEmail: "Email already exists" }));
+              setAttemptedSubmit(true);
+              return false;
+            }
+
+            if (
+              json.code === "BRANFLU__2007" ||
+              (json.message && json.message.toLowerCase().includes("password"))
+            ) {
               setErrors((e) => ({ ...e, password: json.message || "Invalid password" }));
               setAttemptedSubmit(true);
               toast.error(json.message || "Invalid password");
-            } else if (json.field === "payPalEmail" || (json.message && json.message.toLowerCase().includes("email"))) {
+              return false;
+            }
+
+            if (
+              json.field === "payPalEmail" ||
+              (json.message && json.message.toLowerCase().includes("email"))
+            ) {
               setErrors((e) => ({ ...e, payPalEmail: json.message || "Invalid email" }));
               setAttemptedSubmit(true);
               toast.error(json.message || "Email issue");
-            } else if (json.field === "name") {
+              return false;
+            }
+
+            if (json.field === "name") {
               setErrors((e) => ({ ...e, name: json.message || "Invalid name" }));
               setAttemptedSubmit(true);
               toast.error(json.message || "Name issue");
-            } else {
-              toast.error(json.message || `Registration failed (${res.status})`);
-              throw new Error(json.message || text || `Registration failed (${res.status})`);
+              return false;
             }
+
+            toast.error(json.message || `Registration failed (${res.status})`);
             return false;
           }
+
           const errMsg = text || `Registration failed (${res.status})`;
           toast.error(errMsg);
-          throw new Error(errMsg);
+          return false;
         }
 
         toast.success("Account created successfully 🎉");
         router.replace("/login-success");
         return true;
       }
-    } catch (err: any) {
-      console.error("Registration error:", err);
-      setOtpError(err?.message || "Registration failed");
-      toast.error(err?.message || "Registration failed");
+
+      // TODO: influencer signup goes here...
+      return false; // temporary fallback
+    } catch (err) {
+      toast.error("Unexpected error during signup");
       return false;
     }
   };
+
 
   // -------------------------
   // OTP helpers (input behaviour)
@@ -371,7 +366,7 @@ export default function LoginPage() {
       let json: any = null;
       try {
         json = text ? JSON.parse(text) : null;
-      } catch {}
+      } catch { }
 
       if (!res.ok) {
         // Prefer structured message from backend, fallback to text
@@ -415,7 +410,7 @@ export default function LoginPage() {
       toast.success("Verified ✓ Redirecting...");
       setTimeout(() => {
         if (activeTab === "brand") {
-          
+
         } else {
           router.replace("/login-success");
         }
