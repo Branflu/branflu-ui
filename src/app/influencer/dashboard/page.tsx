@@ -32,6 +32,15 @@ interface ChartDataPoint {
   estimatedMinutesWatched: number;
 }
 
+interface AnalyticsRecord {
+  date?: string;
+  daily?: string;
+  views?: number;
+  likes?: number;
+  comments?: number;
+  estimatedMinutesWatched?: number;
+}
+
 function formatDateForXAxis(isoDate: string): string {
   try {
     const d = new Date(isoDate);
@@ -50,10 +59,9 @@ const CampaignsPage: React.FC = () => {
   const API_HOST = process.env.NEXT_PUBLIC_API_HOST;
 
   useEffect(() => {
-    // Fetch influencer data directly, backend reads JWT from cookie
     fetch(`${API_HOST}/api/youtube/influencer/me`, {
       method: "GET",
-      credentials: "include", // ✅ important: sends cookies automatically
+      credentials: "include",
     })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch influencer data");
@@ -70,10 +78,15 @@ const CampaignsPage: React.FC = () => {
         });
 
         if (Array.isArray(data.analytics) && data.analytics.length > 0) {
-          const sorted = data.analytics
+          const sorted: AnalyticsRecord[] = data.analytics
             .slice()
-            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          const formatted: ChartDataPoint[] = sorted.map((r: any) => ({
+            .sort(
+              (a: AnalyticsRecord, b: AnalyticsRecord) =>
+                new Date(a.date ?? a.daily ?? "").getTime() -
+                new Date(b.date ?? b.daily ?? "").getTime()
+            );
+
+          const formatted: ChartDataPoint[] = sorted.map((r: AnalyticsRecord) => ({
             date: formatDateForXAxis(r.date ?? r.daily ?? ""),
             views: typeof r.views === "number" ? r.views : 0,
             likes: typeof r.likes === "number" ? r.likes : 0,
@@ -81,6 +94,7 @@ const CampaignsPage: React.FC = () => {
             estimatedMinutesWatched:
               typeof r.estimatedMinutesWatched === "number" ? r.estimatedMinutesWatched : 0,
           }));
+
           setChartData(formatted);
         } else {
           setChartData([]);
@@ -92,7 +106,7 @@ const CampaignsPage: React.FC = () => {
         setError(err.message || "Unknown error");
         setLoading(false);
       });
-  }, []);
+  }, [API_HOST]);
 
   const campaigns = [
     { title: "GlowUp Challenge", category: "Fashion", brand: "T" },
@@ -102,7 +116,6 @@ const CampaignsPage: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-[#0f172a] text-white">
       <main className="flex-1 px-2 pt-2">
-        {/* Title */}
         <h1 className="text-2xl font-semibold">
           Campaigns <span className="text-green-400">in-Progress</span>
         </h1>
@@ -156,7 +169,8 @@ const CampaignsPage: React.FC = () => {
                   <div>
                     <h2 className="text-lg font-semibold">{campaign.title}</h2>
                     <p className="text-gray-400 text-sm mt-1 max-w-lg">
-                      Collaborate with top beauty influencers to showcase BrandX's new summer skincare range through engaging Instagram reels and authentic product reviews.
+                      Collaborate with top beauty influencers to showcase BrandX&apos;s new summer
+                      skincare range through engaging Instagram reels and authentic product reviews.
                     </p>
                     <p className="mt-2 text-yellow-400 text-xs font-medium">Requirement</p>
                   </div>
@@ -189,7 +203,7 @@ const CampaignsPage: React.FC = () => {
             ))}
           </div>
 
-
+          {/* Influencer Card */}
           <div className="lg:w-1/3 bg-[#1e293b] border border-gray-600 rounded-xl p-5 shadow-lg h-fit flex flex-col">
             <div className="flex flex-col items-center mb-6">
               {loading ? (
@@ -243,7 +257,9 @@ const CampaignsPage: React.FC = () => {
                                 minWidth: "140px",
                               }}
                             >
-                              <p style={{ color: "#9ca3af", fontSize: "12px", marginBottom: "4px" }}>
+                              <p
+                                style={{ color: "#9ca3af", fontSize: "12px", marginBottom: "4px" }}
+                              >
                                 {label}
                               </p>
                               <p style={{ color: "#f59f00", fontSize: "13px", margin: "2px 0" }}>
