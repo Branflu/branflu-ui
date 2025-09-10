@@ -76,6 +76,10 @@ export default function LoginPage() {
   const handleYouTubeLogin = () => (window.location.href = `${API_HOST}/api/youtube/auth`);
   const handleGoogleLogin = () => (window.location.href = `${API_HOST}/auth/google/auth`);
   const handleGoogleSignup = () => (window.location.href = `${API_HOST}/auth/google/auth`);
+  const otpInputsRef = useRef<Array<HTMLInputElement | null>>([]);
+
+
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -176,6 +180,8 @@ export default function LoginPage() {
       setSendingOtp(false);
     }
   };
+
+
 
   const verifyOtpRequest = async (email: string, otp: string) => {
     setOtpError("");
@@ -362,35 +368,56 @@ export default function LoginPage() {
         credentials: "include", // important: accept HttpOnly cookie from backend
       });
 
+
       const text = await res.text().catch(() => "");
-      let json: any = null;
+      let json: unknown = null;
+
       try {
         json = text ? JSON.parse(text) : null;
-      } catch { }
+      } catch (err) {
+        console.error("Failed to parse JSON:", err);
+        json = null; // fallback
+      }
 
       if (!res.ok) {
         // Prefer structured message from backend, fallback to text
-        const msg = json?.message || text || "Login failed";
-        // map common server messages to friendly toasts
-        if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("password")) {
+        const msg =
+          json && typeof json === "object" && "message" in json
+            ? (json as { message: string }).message
+            : text || "Login failed";
+
+        const lowerMsg = msg.toLowerCase();
+
+        // Map common server messages to friendly toasts
+        if (lowerMsg.includes("invalid") || lowerMsg.includes("password")) {
           toast.error("Incorrect email or password.");
-        } else if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("exist")) {
+        } else if (lowerMsg.includes("not found") || lowerMsg.includes("exist")) {
           toast.error("Email does not exist.");
         } else {
           toast.error(msg);
         }
+
         return;
       }
 
       // Success — backend should have set HttpOnly cookie; route user to redirect page
       toast.success("Logged in — redirecting...");
-      // Prefer redirect returned by backend JSON; fall back to /login-success
-      const redirectPath = json?.redirect || "/login-success";
-      // immediate navigation
+
+      // Prefer redirect returned by backend JSON; fallback to /login-success
+      const redirectPath =
+        json && typeof json === "object" && "redirect" in json
+          ? (json as { redirect: string }).redirect
+          : "/login-success";
+
       router.replace(redirectPath);
-    } catch (err: any) {
-      console.error("Login request failed:", err);
-      toast.error("Network error. Please try again.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error("Login request failed:", err.message);
+        toast.error(err.message); // or custom message
+      } else {
+        console.error("Login request failed:", err);
+        toast.error("Network error. Please try again.");
+      }
     }
   };
 
@@ -635,11 +662,24 @@ export default function LoginPage() {
               {/* OTP VIEW */}
               {isSignUp && otpStage === "sent" && (
                 <div className="pt-2">
-                  <div className="text-sm text-gray-300 mb-3">We've sent a code to <strong className="text-white">{maskedEmail}</strong></div>
+                  <div className="text-sm text-gray-300 mb-3">We&apos;ve sent a code to <strong className="text-white">{maskedEmail}</strong></div>
 
                   <div className="flex gap-3 justify-center mb-2" onPaste={handlePaste}>
                     {digits.map((d, i) => (
-                      <input key={i} ref={(el) => (inputsRef.current[i] = el as HTMLInputElement)} value={d} onChange={(e) => onDigitChange(i, e.target.value)} onKeyDown={(e) => onKeyDown(e, i)} inputMode="numeric" pattern="[0-9]*" maxLength={1} disabled={verifyingOtp} className="w-12 h-12 text-center rounded-lg bg-gray-800 text-white text-lg outline-none disabled:opacity-60" />
+                      <input
+                        key={i}
+                        ref={(el) => {
+                          otpInputsRef.current[i] = el; // assign safely
+                        }}
+                        value={d}
+                        onChange={(e) => onDigitChange(i, e.target.value)}
+                        onKeyDown={(e) => onKeyDown(e, i)}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        disabled={verifyingOtp}
+                        className="w-12 h-12 text-center rounded-lg bg-gray-800 text-white text-lg outline-none disabled:opacity-60"
+                      />
                     ))}
                   </div>
 
@@ -658,7 +698,7 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  <p className="mt-3 text-xs text-gray-400 text-center">If you don't receive the email, check spam or try resending. (Dev fallback accepts 123456)</p>
+                  <p className="mt-3 text-xs text-gray-400 text-center">If you don&apos;t receive the email, check spam or try resending. (Dev fallback accepts 123456)</p>
                 </div>
               )}
             </div>

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FaYoutube, FaInstagram } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-
+import Image from "next/image";
 import {
   LineChart,
   Line,
@@ -54,7 +54,7 @@ function formatDateForXAxis(isoDate: string): string {
 
 // ================= Page =================
 const CampaignsPage: React.FC = () => {
-  const router = useRouter();
+  
   const [influencer, setInfluencer] = useState<Influencer | null>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -225,7 +225,7 @@ const CampaignsPage: React.FC = () => {
               ) : influencer ? (
                 <>
                   {influencer.imageUrl ? (
-                    <img
+                    <Image
                       src={influencer.imageUrl}
                       alt={`${influencer.title} profile`}
                       className="w-20 h-20 rounded-full border-2 border-gray-600 object-cover"
