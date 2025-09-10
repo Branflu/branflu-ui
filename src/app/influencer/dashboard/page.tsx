@@ -47,10 +47,11 @@ const CampaignsPage: React.FC = () => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const API_HOST = process.env.NEXT_PUBLIC_API_HOST;
 
   useEffect(() => {
     // Fetch influencer data directly, backend reads JWT from cookie
-    fetch(`http://localhost:8080/api/youtube/influencer/me`, {
+    fetch(`${API_HOST}/api/youtube/influencer/me`, {
       method: "GET",
       credentials: "include", // ✅ important: sends cookies automatically
     })
@@ -101,12 +102,50 @@ const CampaignsPage: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-[#0f172a] text-white">
       <main className="flex-1 px-2 pt-2">
+        {/* Title */}
         <h1 className="text-2xl font-semibold">
           Campaigns <span className="text-green-400">in-Progress</span>
         </h1>
         <hr className="border-gray-700 my-3" />
 
+        {/* Search & Filters */}
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          <input
+            type="text"
+            placeholder="Search"
+            className="px-4 py-2 rounded-md bg-[#1e293b] border border-gray-600 focus:outline-none focus:border-blue-500 text-sm"
+          />
+          <button className="px-4 py-2 bg-blue-600 rounded-md text-sm">Search</button>
+
+          <div className="flex items-center gap-1 px-3 py-2 bg-[#1e293b] rounded-md text-sm border border-gray-600">
+            <FaYoutube className="text-red-500" />
+            <select className="bg-[#1e293b] focus:outline-none text-sm">
+              <option>10k - 20k</option>
+              <option>20k - 50k</option>
+              <option>50k - 100k</option>
+              <option>100k - 500k</option>
+              <option>500k - 1M</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1 px-3 py-2 bg-[#1e293b] rounded-md text-sm border border-gray-600">
+            <FaInstagram className="text-pink-500" />
+            <select className="bg-[#1e293b] focus:outline-none text-sm">
+              <option>10k - 20k</option>
+              <option>20k - 50k</option>
+              <option>50k - 100k</option>
+              <option>100k - 500k</option>
+              <option>500k - 1M</option>
+            </select>
+          </div>
+
+          <button className="px-4 py-2 border border-gray-500 rounded-md text-sm">Filters</button>
+          <button className="px-4 py-2 border border-gray-500 rounded-md text-sm">Apply</button>
+        </div>
+
+        {/* Campaigns + Right Card */}
         <div className="flex flex-col lg:flex-row gap-6">
+          {/* Campaigns List */}
           <div className="flex flex-col gap-4 flex-1 max-w-3xl">
             {campaigns.map((campaign, idx) => (
               <div
@@ -117,16 +156,39 @@ const CampaignsPage: React.FC = () => {
                   <div>
                     <h2 className="text-lg font-semibold">{campaign.title}</h2>
                     <p className="text-gray-400 text-sm mt-1 max-w-lg">
-                      Collaborate with top influencers to showcase products.
+                      Collaborate with top beauty influencers to showcase BrandX's new summer skincare range through engaging Instagram reels and authentic product reviews.
                     </p>
+                    <p className="mt-2 text-yellow-400 text-xs font-medium">Requirement</p>
                   </div>
                   <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-sm font-bold">
                     {campaign.brand}
                   </div>
                 </div>
+
+                <div className="flex justify-between items-center mt-3">
+                  <div className="flex items-center gap-4 text-sm text-gray-300">
+                    <span className="flex items-center gap-1">
+                      <FaYoutube className="text-red-500" /> 22k
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FaInstagram className="text-pink-500" /> 20k
+                    </span>
+                    <span>Category: {campaign.category}</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button className="px-4 py-1 bg-blue-500 hover:bg-blue-600 rounded-md text-white text-sm transition">
+                      Details
+                    </button>
+                    <button className="px-4 py-1 text-blue-400 border border-blue-400 hover:bg-blue-400 hover:text-white rounded-md text-sm transition">
+                      Apply
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
+
 
           <div className="lg:w-1/3 bg-[#1e293b] border border-gray-600 rounded-xl p-5 shadow-lg h-fit flex flex-col">
             <div className="flex flex-col items-center mb-6">

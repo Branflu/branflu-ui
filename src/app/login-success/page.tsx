@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import branfluLogo from "@/assest/branfluLogo.png";
 
+// You can set API_HOST from environment variables or hardcode for development
+const API_HOST = process.env.NEXT_PUBLIC_API_HOST;
+
 export default function LoginRedirect() {
   const router = useRouter();
   const [message, setMessage] = useState("Checking login status...");
 
   useEffect(() => {
-    fetch(`http://localhost:8080/api/me`, {
+    fetch(`${API_HOST}/api/me`, {
       credentials: "include", // important: sends HTTP-only cookie
     })
       .then(async (res) => {

@@ -73,12 +73,13 @@ export default function LoginPage() {
     if (local.length <= 2) return `${local[0]}***@${domain}`;
     return `${local[0]}${"*".repeat(Math.min(3, local.length - 2))}${local.slice(-1)}@${domain}`;
   };
-
+  
+  const API_HOST = process.env.NEXT_PUBLIC_API_HOST;
   // social handlers (OAuth flows handled by backend redirect)
-  const handleFacebookLogin = () => (window.location.href = "http://localhost:8080/api/facebook/login");
-  const handleYouTubeLogin = () => (window.location.href = "http://localhost:8080/api/youtube/auth");
-  const handleGoogleLogin = () => (window.location.href = "http://localhost:8080/auth/google/auth");
-  const handleGoogleSignup = () => (window.location.href = "http://localhost:8080/auth/google/auth");
+  const handleFacebookLogin = () => (window.location.href = `${API_HOST}/api/facebook/login`);
+  const handleYouTubeLogin = () => (window.location.href = `${API_HOST}/api/youtube/auth`);
+  const handleGoogleLogin = () => (window.location.href = `${API_HOST}/auth/google/auth`);
+  const handleGoogleSignup = () => (window.location.href = `${API_HOST}/auth/google/auth`);
 
   // handle generic input change (works for login & signup fields)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -140,7 +141,7 @@ export default function LoginPage() {
     setOtpError("");
     setSendingOtp(true);
     try {
-      const res = await fetch("http://localhost:8080/api/otp/send", {
+      const res = await fetch(`${API_HOST}/api/otp/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -179,7 +180,7 @@ export default function LoginPage() {
     setOtpError("");
     setVerifyingOtp(true);
     try {
-      const res = await fetch("http://localhost:8080/api/otp/verify", {
+      const res = await fetch(`${API_HOST}/api/otp/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
@@ -232,7 +233,7 @@ export default function LoginPage() {
         // Browser POST so server redirect works (brand)
         const form = document.createElement("form");
         form.method = "POST";
-        form.action = "http://localhost:8080/api/business/register";
+        form.action = `${API_HOST}/api/business/register`;
         form.style.display = "none";
 
         const fields: Record<string, any> = {
@@ -257,7 +258,7 @@ export default function LoginPage() {
         return true;
       } else {
         // INFLUENCER: SPA/AJAX
-        const url = "http://localhost:8080/api/influencer/register";
+        const url = `${API_HOST}/api/influencer/register`;
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -356,7 +357,7 @@ export default function LoginPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:8080/api/login", {
+      const res = await fetch(`${API_HOST}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
