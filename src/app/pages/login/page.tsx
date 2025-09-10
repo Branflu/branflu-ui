@@ -415,7 +415,7 @@ export default function LoginPage() {
       toast.success("Verified ✓ Redirecting...");
       setTimeout(() => {
         if (activeTab === "brand") {
-          // server-side redirect occurred after form submit for brand
+          
         } else {
           router.replace("/login-success");
         }
