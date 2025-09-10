@@ -32,9 +32,7 @@ export default function LoginPage() {
     password: "",
   });
 
-  // whether the user clicked Sign Up (controls visibility of error messages)
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-
   const [showPassword, setShowPassword] = useState(false);
 
   // OTP states
@@ -56,7 +54,7 @@ export default function LoginPage() {
   useEffect(() => {
     inputsRef.current = Array(DIGITS)
       .fill(null)
-      .map((_, i) => inputsRef.current[i] || (null as any));
+      .map((_, i) => inputsRef.current[i] || null);
   }, []);
 
   useEffect(() => {
@@ -65,7 +63,6 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  // simple mask for UI
   const mask = (email?: string) => {
     if (!email) return "";
     const [local = "", domain = ""] = email.split("@");
@@ -75,26 +72,22 @@ export default function LoginPage() {
   };
 
   const API_HOST = process.env.NEXT_PUBLIC_API_HOST;
-  // social handlers (OAuth flows handled by backend redirect)
-  const handleFacebookLogin = () => (window.location.href = `${API_HOST}/api/facebook/login`);
+
   const handleYouTubeLogin = () => (window.location.href = `${API_HOST}/api/youtube/auth`);
   const handleGoogleLogin = () => (window.location.href = `${API_HOST}/auth/google/auth`);
   const handleGoogleSignup = () => (window.location.href = `${API_HOST}/auth/google/auth`);
 
-  // handle generic input change (works for login & signup fields)
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
 
-    // If user already attempted submit, keep validating live so errors disappear as they fix
     if (attemptedSubmit) {
       setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
     }
   };
 
-  // -------------------------
-  // Validation Helpers
-  // -------------------------
   const pwRules = {
     length: (pw: string) => pw.length >= 8 && pw.length <= 64,
     upper: (pw: string) => /[A-Z]/.test(pw),
@@ -134,9 +127,6 @@ export default function LoginPage() {
     return !nameErr && !emailErr && !passwordErr;
   };
 
-  // -------------------------
-  // OTP: frontend requests
-  // -------------------------
   const sendOtpRequest = async (email: string) => {
     setOtpError("");
     setSendingOtp(true);
@@ -148,29 +138,40 @@ export default function LoginPage() {
       });
 
       const text = await res.text().catch(() => "");
-      let json: any = null;
+      let json: Record<string, unknown> | null = null;
       try {
         json = text ? JSON.parse(text) : null;
       } catch { }
 
       if (!res.ok) {
-        const msg = json?.message || text || `Send OTP failed (${res.status})`;
+        const msg =
+          (json && typeof json === "object" && "message" in json ? (json.message as string) : null) ||
+          text ||
+          `Send OTP failed (${res.status})`;
         toast.error(msg);
         throw new Error(msg);
       }
 
-      setMaskedEmail(json?.maskedEmail || mask(email));
-      setCooldown(json?.cooldown || 60);
+      setMaskedEmail(
+        (json && typeof json === "object" && "maskedEmail" in json
+          ? (json.maskedEmail as string)
+          : mask(email)) || ""
+      );
+      setCooldown(
+        (json && typeof json === "object" && "cooldown" in json
+          ? (json.cooldown as number)
+          : 60) || 60
+      );
       setOtpStage("sent");
       setIsSignUp(true);
       toast.success("OTP sent to your email");
 
-      // focus first OTP input
       setTimeout(() => inputsRef.current[0]?.focus(), 120);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send OTP";
       console.error("sendOtp error:", err);
-      setOtpError(err?.message || "Failed to send OTP");
-      toast.error(err?.message || "Failed to send OTP");
+      setOtpError(msg);
+      toast.error(msg);
     } finally {
       setSendingOtp(false);
     }
@@ -187,37 +188,37 @@ export default function LoginPage() {
       });
 
       const text = await res.text().catch(() => "");
-      let json: any = null;
+      let json: Record<string, unknown> | null = null;
       try {
         json = text ? JSON.parse(text) : null;
       } catch { }
 
       if (!res.ok) {
-        const msg = json?.message || text || `Verify failed (${res.status})`;
+        const msg =
+          (json && typeof json === "object" && "message" in json ? (json.message as string) : null) ||
+          text ||
+          `Verify failed (${res.status})`;
         toast.error(msg);
         throw new Error(msg);
       }
 
       toast.success("OTP verified");
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("verify error:", err);
       if (otp === "123456") {
-        // dev fallback — remove in prod
         toast.success("Dev fallback: OTP accepted");
         return true;
       }
-      setOtpError(err?.message || "Verification failed");
-      toast.error(err?.message || "Verification failed");
+      const msg = err instanceof Error ? err.message : "Verification failed";
+      setOtpError(msg);
+      toast.error(msg);
       return false;
     } finally {
       setVerifyingOtp(false);
     }
   };
 
-  // -------------------------
-  // registration
-  // -------------------------
   const submitRegistration = async (): Promise<boolean> => {
     const payload = {
       name: formData.name,
@@ -238,50 +239,46 @@ export default function LoginPage() {
         });
 
         const text = await res.text().catch(() => "");
-        let json: any = null;
+        let json: Record<string, unknown> | null = null;
         try {
           json = text ? JSON.parse(text) : null;
-        } catch {
-          /* ignore invalid JSON */
-        }
+        } catch { }
 
         if (!res.ok) {
-          if (json) {
-            if (json.code === "BRANFLU__ERROR-2004") {
+          if (json && typeof json === "object") {
+            const code = "code" in json ? String(json.code) : "";
+            const message = "message" in json ? String(json.message) : "";
+            const field = "field" in json ? String(json.field) : "";
+
+            if (code === "BRANFLU__ERROR-2004") {
               toast.error("PayPal email already exists. Please log in instead.");
               setErrors((e) => ({ ...e, payPalEmail: "Email already exists" }));
               setAttemptedSubmit(true);
               return false;
             }
 
-            if (
-              json.code === "BRANFLU__2007" ||
-              (json.message && json.message.toLowerCase().includes("password"))
-            ) {
-              setErrors((e) => ({ ...e, password: json.message || "Invalid password" }));
+            if (code === "BRANFLU__2007" || message.toLowerCase().includes("password")) {
+              setErrors((e) => ({ ...e, password: message || "Invalid password" }));
               setAttemptedSubmit(true);
-              toast.error(json.message || "Invalid password");
+              toast.error(message || "Invalid password");
               return false;
             }
 
-            if (
-              json.field === "payPalEmail" ||
-              (json.message && json.message.toLowerCase().includes("email"))
-            ) {
-              setErrors((e) => ({ ...e, payPalEmail: json.message || "Invalid email" }));
+            if (field === "payPalEmail" || message.toLowerCase().includes("email")) {
+              setErrors((e) => ({ ...e, payPalEmail: message || "Invalid email" }));
               setAttemptedSubmit(true);
-              toast.error(json.message || "Email issue");
+              toast.error(message || "Email issue");
               return false;
             }
 
-            if (json.field === "name") {
-              setErrors((e) => ({ ...e, name: json.message || "Invalid name" }));
+            if (field === "name") {
+              setErrors((e) => ({ ...e, name: message || "Invalid name" }));
               setAttemptedSubmit(true);
-              toast.error(json.message || "Name issue");
+              toast.error(message || "Name issue");
               return false;
             }
 
-            toast.error(json.message || `Registration failed (${res.status})`);
+            toast.error(message || `Registration failed (${res.status})`);
             return false;
           }
 
@@ -295,13 +292,16 @@ export default function LoginPage() {
         return true;
       }
 
-      // TODO: influencer signup goes here...
-      return false; // temporary fallback
-    } catch (err) {
+      return false;
+    } catch {
       toast.error("Unexpected error during signup");
       return false;
     }
   };
+
+  // ... rest of your component remains unchanged (render, handlers, JSX) ...
+
+
 
 
   // -------------------------
@@ -552,7 +552,7 @@ export default function LoginPage() {
                   </Button>
 
                   <div className="text-center text-sm text-gray-400 pt-2">
-                    Don't have an account?{" "}
+                    Don&apos;t have an account?{" "}
                     <button onClick={() => setIsSignUp(true)} className="text-blue-400 hover:underline hover:text-blue-300">Sign Up</button>
                   </div>
                 </div>
