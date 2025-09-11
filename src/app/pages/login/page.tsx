@@ -44,7 +44,7 @@ export default function LoginPage() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [digits, setDigits] = useState<string[]>(Array(DIGITS).fill(""));
-  const inputsRef = useRef<HTMLInputElement[]>([]);
+  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     const t = setTimeout(() => setIsLoading(false), 600);
@@ -669,7 +669,7 @@ export default function LoginPage() {
                       <input
                         key={i}
                         ref={(el) => {
-                          otpInputsRef.current[i] = el; // assign safely
+                          inputsRef.current[i] = el; // assign the element, returns void
                         }}
                         value={d}
                         onChange={(e) => onDigitChange(i, e.target.value)}

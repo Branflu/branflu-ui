@@ -54,7 +54,7 @@ function formatDateForXAxis(isoDate: string): string {
 
 // ================= Page =================
 const CampaignsPage: React.FC = () => {
-  
+
   const [influencer, setInfluencer] = useState<Influencer | null>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -228,8 +228,11 @@ const CampaignsPage: React.FC = () => {
                     <Image
                       src={influencer.imageUrl}
                       alt={`${influencer.title} profile`}
+                      width={80}
+                      height={80}
                       className="w-20 h-20 rounded-full border-2 border-gray-600 object-cover"
                     />
+
                   ) : (
                     <Icon
                       icon="mdi:account-circle-outline"
